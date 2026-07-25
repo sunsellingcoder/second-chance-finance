@@ -1,0 +1,2 @@
+-- This migration is now combined with 001_initial_schema.sql
+-- Kept as placeholder for future RLS policy updates

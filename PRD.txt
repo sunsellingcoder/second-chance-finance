@@ -1,0 +1,186 @@
+BetterMinds Product Requirements Document - Rohan V
+ 
+Second-Chance Financial Rebuilding Assistant
+
+---
+
+1. Overview
+
+Problem: People leaving incarceration face a uniquely hard financial re-entry: damaged or absent credit history, multi-year gaps in financial activity, no guidance on where to start, and a banking system not built for their situation. Existing credit/finance apps (Credit Karma, NerdWallet, etc.) assume a continuous financial history and don't address re-entry-specific obstacles (ID recovery, banking access, employment gaps, restitution debt, predatory lending targeting this population).
+
+Solution: 
+1. Models a realistic, personalized credit-rebuilding timeline
+2. Explains financial concepts in plain, simple language
+3. Connects users to vetted "second-chance" banking and credit products
+
+---
+
+2. Target Users
+
+User Type and Description
+ 
+Primary: Individuals recently released from incarceration (0–5 years post-release)
+
+Secondary: Reentry case managers, parole/probation officers, nonprofit reentry programs 
+
+Tertiary: Family members helping a returning citizen rebuild finances 
+
+Key constraints to design for:
+- Limited or no smartphone/data plan access (some users on shared devices, library computers)
+
+- Low digital literacy in some cases, high in others (do not assume)
+
+- Possible lack of permanent address, phone number, or state ID
+
+- Distrust of institution: need for privacy and non-judgmental tone
+
+- Wide range of financial literacy baselines
+
+ 3. Goals & Success statistics
+
+Primary goals:
+- Help users understand *where they stand* and *what steps come next*
+- Reduce time-to-first-financial-milestone (first bank account, first secured card, first credit score)
+- Reduce predatory product usage (payday loans, high-fee prepaid cards)
+
+Success metrics (MVP → V1):
+- % of users who open a bank account within 30/60/90 days of using the tool
+- % of users who establish a credit score within 6 months
+- User-reported clarity/confidence score (simple in-app survey)
+- Referral conversion rate to partner second-chance banking products
+- Retention: % returning to check progress monthly
+
+---
+
+4. Core Features
+
+Credit-Rebuilding Timeline Assistant
+
+- Intake questionnaire: current financial status (bank account? ID? SSN card? existing debts? restitution? employment status?)
+
+- Generates a personalized, realistic timeline ("Month 1: open a second-chance checking account → Month 2–3: apply for a secured credit card → Month 6: check credit report for errors")
+
+- Model should be rules-based/deterministic at the core (credit scoring mechanics are well-documented — FICO/VantageScore factors), with AI used to narrate and adapt the plan
+
+- Progress tracking: checklist format, milestone celebrations
+
+- Adjusts dynamically as user completes steps or reports setbacks (e.g., denied application → offers alternate path)
+
+4.2 Plain-Language Financial Explainer (AI Chat / Q&A)
+
+- Conversational interface answering questions like "What is a secured credit card?" or "Why did my score drop?"
+
+- Explicitly tuned for: short sentences, reading-level awareness (aim ~6th–8th grade reading level by default, adjustable)
+
+- Should clarify it is educational, not licensed financial/legal advice
+
+- Pre-built explainer library for common reentry-specific topics:
+
+  - Restitution/court debt vs. credit debt (these are often confused)
+
+  - How to get a copy of your credit report for free
+
+  - Disputing errors on a credit report
+
+  - Understanding predatory products to avoid (rent-to-own, payday loans, high-fee prepaid cards)
+
+  - ID recovery basics (state-by-state, since this often blocks account opening)
+
+4.3 Second-Chance Banking & Product Directory
+
+- Curated, vetted database of:
+  - Second-chance checking accounts (e.g., institutions using tools like ChexSystems alternatives)
+
+  - Secured credit cards designed for credit builders
+
+  - Credit-builder loans (community development financial institutions / CDFIs)
+  - Nonprofit financial counseling orgs (especially reentry-specific ones)
+
+- Filter by: state, whether a permanent address/ID is required, fees, credit-check requirements
+
+- Clear labeling of any affiliate/referral relationships (trust and transparency are critical for this audience)
+
+- "Red flag" warnings on predatory products the tool explicitly does NOT recommend
+
+4.4 Case Manager / Organization Dashboard (V2+)
+
+- Reentry organizations or parole officers could get a dashboard to track (with consent) client progress across a caseload
+
+- Bulk resource sharing, printable PDF guides for clients without reliable device access
+
+4.5 Offline/Low-Access Design
+
+- Printable PDF version of the personalized plan (for library/kiosk use, no login needed to view a static plan)
+- SMS-based check-ins/reminders as an alternative to app-only access
+- Low-bandwidth mode/works on older Android devices
+
+---
+
+5. Example User Flow
+
+1. User signs up (minimal: email or phone only, no address required)
+
+2. Short intake: "Do you have a bank account? A state ID? Any existing debts?"
+
+3. Tool generates a “first-30-days plan”: get a copy of your free credit report, open a second-chance checking account (3 nearby/online options shown)
+
+4. User chats with the AI assistant: "What's a secured credit card?" - plain-language answer
+
+5. User marks a step complete - timeline adjusts, next milestone unlocked
+
+6. Monthly check-in nudges (email/SMS): "It's been 60 days,  want to check if you're ready for a secured card?"
+
+---
+
+6. How to Build It (Development Approach)
+
+Phase 0 — Research & Validation
+- Interview reentry nonprofits, formerly incarcerated individuals, and credit counselors
+- Compile authoritative data sources:
+  - CFPB (Consumer Financial Protection Bureau) guidance on credit building
+  - FICO/VantageScore public scoring factor documentation
+  - State-by-state ID recovery requirements
+  - Directory of existing second-chance banking programs (ex: the Bank On coalition list is a good public starting point)
+
+Phase 1 — MVP
+stack suggestion:
+- Frontend: simple responsive web app (React), mobile-first, works on low-end devices
+- Backend: lightweight (Node/Python + Postgres) to store user intake + progress state
+- AI layer: Claude/GPT API for the plain-language chat + plan narration, with **retrieval-augmented generation (RAG)** over your vetted resource library so answers stay grounded in real, current info rather than hallucinated
+- Timeline logic: build as a deterministic rules engine (if/then decision tree) — do NOT let the LLM freely generate credit-scoring math or timelines; the LLM narrates output from your rules engine
+- Resource directory: structured database (not scraped/generated) — this must be manually vetted for trustworthiness
+
+MVP scope:
+- Intake questionnaire
+- Static-but-personalized timeline generator
+- Basic AI chat Q&A (RAG-grounded)
+- Directory of 10–20 vetted second-chance banking products/orgs (start with 1–2 states, then expand)
+
+Phase 2 — V1 Expansion
+- Progress tracking + milestone notifications
+- SMS reminder system
+- Expand the system to all 50 states
+- Add downloadable/printable plan PDFs
+
+Phase 3 — V2
+- Case manager dashboard for nonprofits/parole orgs
+- Partnerships with CDFIs and second-chance banks (potential referral revenue)
+- Credit report import (via Plaid or similar) once users have enough history to check
+
+---
+
+7. Risks & Compliance Considerations
+
+This is high-sensitivity. Build compliance.
+
+- Not a licensed advisor: Clearly disclaim that the tool provides educational information, not financial or legal advice. Consider consulting a compliance lawyer before launch, given credit-related guidance.
+- Fair lending/discrimination law: Any product recommendations must avoid anything resembling discriminatory steering.
+- Data privacy
+Incarceration history is deeply sensitive data. Minimize data collection, avoid storing criminal record details unless essential, use strong encryption, and be transparent about data use. Consider not requiring a real name/SSN at all in MVP.
+
+- Avoid AI hallucination on financial facts: Use RAG grounded in vetted sources for anything factual (fees, eligibility, credit mechanics) — never let the LLM freely generate numbers or eligibility rules.
+
+- Vetting partners carefully:
+ Predatory lenders specifically target this population; any "second-chance" product must be rigorously vetted, and affiliate relationships must be disclosed.
+
+- Accessibility: Design for varying literacy levels and limited device/data access — this audience cannot be assumed to have an iPhone and unlimited data.
