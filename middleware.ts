@@ -1,9 +1,29 @@
-import { updateSession } from '@/lib/supabase/middleware';
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  // Update session using Supabase middleware
-  const response = await updateSession(request);
+  let response = NextResponse.next({
+    request: { headers: request.headers },
+  });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
 
   // Guard protected routes
   const protectedRoutes = ['/dashboard', '/timeline', '/chat'];
@@ -11,11 +31,17 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith(route)
   );
 
-  // For now, we'll allow access to timeline and chat for demo purposes
-  // In production, you would check for authentication here
-  // if (isProtectedRoute && !user) {
-  //   return NextResponse.redirect(new URL('/login', request.url));
-  // }
+  // Check for authentication on protected routes
+  if (isProtectedRoute) {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      // Redirect to login page with return URL
+      const returnUrl = encodeURIComponent(request.nextUrl.pathname);
+      const redirectUrl = new URL(`/login?returnUrl=${returnUrl}`, request.url);
+      return NextResponse.redirect(redirectUrl);
+    }
+  }
 
   return response;
 }

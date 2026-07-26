@@ -41,6 +41,11 @@ Required in `.env.local`:
 - `GROQ_API_KEY` - Groq API key for AI chat
 - `NEXT_PUBLIC_SITE_URL` - Application URL (e.g., http://localhost:3000)
 
+Optional but recommended:
+- `OPENAI_API_KEY` - OpenAI API key for embedding generation (required for RAG functionality)
+
+See `.env.local.example` for template and setup instructions.
+
 ## Architecture
 
 ### Deterministic Timeline Engine
@@ -112,14 +117,21 @@ types/
 ## Important Notes
 
 ### Embedding Generation
-- Currently using placeholder embeddings (zero vectors)
-- Production implementation requires embedding API (e.g., OpenAI text-embedding-3-small)
+- Real embedding generation using OpenAI text-embedding-3-small API
+- Fallback to placeholder embeddings if OPENAI_API_KEY is not configured
+- Environment variable required: `OPENAI_API_KEY`
 - Update `lib/supabase/embeddings.ts` `generateEmbedding()` function
 
 ### Storage Buckets
-- Must create manually in Supabase:
+- Must create manually in Supabase Dashboard:
   - `user-documents` (private bucket)
   - `generated-plans` (public bucket)
+- Setup instructions:
+  1. Go to Supabase Dashboard → Storage
+  2. Create new bucket named `user-documents` (private)
+  3. Create new bucket named `generated-plans` (public)
+  4. Set appropriate RLS policies for bucket access
+  5. Use the checkStorageBuckets() action to verify bucket status
 
 ### Rate Limiting
 - Token bucket algorithm implemented in `lib/groq/client.ts`
@@ -142,10 +154,11 @@ types/
 
 ## Known Issues / TODOs
 
-- [ ] Implement actual embedding generation (currently placeholder)
-- [ ] Enable strict route protection in middleware (currently demo mode)
+- [x] Implement actual embedding generation (now using OpenAI API)
+- [x] Enable strict route protection in middleware (now enforced)
+- [x] Add timeline export for offline access (text-based export implemented)
+- [ ] Implement PDF generation (currently text-based, can be upgraded to @react-pdf/renderer)
 - [ ] Add comprehensive error handling and logging
-- [ ] Implement PDF generation for offline timeline access
 - [ ] Add integration tests
 - [ ] Set up CI/CD pipeline
 

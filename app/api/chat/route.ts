@@ -1,6 +1,6 @@
 import { streamChatCompletion, getRateLimitStatus } from '@/lib/groq/client';
 import { createClient } from '@/lib/supabase/server';
-import { generateEmbedding } from '@/lib/supabase/embeddings';
+import { searchKnowledgeByText } from '@/lib/supabase/embeddings';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
@@ -23,26 +23,17 @@ export async function POST(req: Request) {
       );
     }
 
-    const supabase = await createClient();
-
-    // Generate embedding for the user's message
+    // Fetch RAG Context using text-based search
     let contextText = '';
     try {
-      const queryEmbedding = await generateEmbedding(message);
-      
-      // Fetch RAG Context (Similarity search using RPC)
-      const { data: contextDocuments } = await supabase.rpc('match_knowledge', {
-        query_embedding: queryEmbedding,
-        match_threshold: 0.7,
-        match_count: 3,
-      });
+      const contextDocuments = await searchKnowledgeByText(message, 0.7, 3);
 
       if (contextDocuments && contextDocuments.length > 0) {
         contextText = contextDocuments.map((doc: any) => doc.content).join('\n---\n');
       }
     } catch (embeddingError) {
-      console.warn('Embedding generation failed, proceeding without RAG context:', embeddingError);
-      // Continue without RAG context if embedding fails
+      console.warn('RAG search failed, proceeding without context:', embeddingError);
+      // Continue without RAG context if search fails
     }
 
     // System Instructions for Plain-Language & Financial Educational Guardrails

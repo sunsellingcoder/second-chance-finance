@@ -93,3 +93,42 @@ export async function deleteFile(filePath: string, bucket: string = 'user-docume
 
   return { success: true };
 }
+
+/**
+ * Check if storage buckets exist
+ */
+export async function checkStorageBuckets() {
+  const supabase = await createClient();
+  
+  const { data: buckets, error } = await supabase.storage.listBuckets();
+  
+  if (error) throw error;
+  
+  const requiredBuckets = ['user-documents', 'generated-plans'];
+  const existingBuckets = buckets?.map(b => b.name) || [];
+  const missingBuckets = requiredBuckets.filter(bucket => !existingBuckets.includes(bucket));
+  
+  return {
+    exists: missingBuckets.length === 0,
+    existingBuckets,
+    missingBuckets,
+  };
+}
+
+/**
+ * Get storage bucket info
+ */
+export async function getBucketInfo(bucket: string) {
+  const supabase = await createClient();
+  
+  const { data, error } = await supabase.storage.getBucket(bucket);
+  
+  if (error) {
+    if (error.message.includes('not found')) {
+      return null;
+    }
+    throw error;
+  }
+  
+  return data;
+}
