@@ -5,13 +5,13 @@ INSERT INTO public.product_directory (name, provider_name, type, supported_state
 ('Bank On Certified Accounts', 'Various Banks', 'checking', ARRAY['All States'], true, false, 0.00, NULL, NULL, true),
 ('Capital One Secured Credit Card', 'Capital One', 'secured_card', ARRAY['All States'], true, false, 0.00, NULL, NULL, true),
 ('Discover it® Secured Credit Card', 'Discover', 'secured_card', ARRAY['All States'], true, false, 0.00, NULL, NULL, true),
-('Self Credit Builder Account', 'Self Financial', 'credit_builder_loan', ARRAY['All States'], true, false, NULL, NULL, ARRAY['Administrative fees vary'], true),
-('Local CDFI Credit Builder Loans', 'Community Development Financial Institutions', 'credit_builder_loan', ARRAY['Varies'], true, true, NULL, NULL, NULL, true),
-('National Foundation for Credit Counseling', 'NFCC', 'counseling_org', ARRAY['All States'], false, false, NULL, NULL, NULL, true),
+('Self Credit Builder Account', 'Self Financial', 'credit_builder_loan', ARRAY['All States'], true, false, 0.00, NULL, ARRAY['Administrative fees vary'], true),
+('Local CDFI Credit Builder Loans', 'Community Development Financial Institutions', 'credit_builder_loan', ARRAY['Varies'], true, true, 0.00, NULL, NULL, true),
+('National Foundation for Credit Counseling', 'NFCC', 'counseling_org', ARRAY['All States'], false, false, 0.00, NULL, NULL, true),
 ('Chime Second Chance Banking', 'Chime', 'checking', ARRAY['All States'], true, false, 0.00, NULL, NULL, true),
 ('Green Dot Prepaid Card', 'Green Dot', 'checking', ARRAY['All States'], true, false, 7.95, NULL, ARRAY['High monthly fees compared to bank accounts'], false),
 ('NetSpend Prepaid Card', 'NetSpend', 'checking', ARRAY['All States'], true, false, 7.95, NULL, ARRAY['High fees for basic services'], false),
-('ACE Cash Express', 'ACE Cash Express', 'credit_builder_loan', ARRAY['Select States'], true, false, NULL, NULL, ARRAY['Predatory lender with extremely high interest rates (300%+ APR)'], false);
+('ACE Cash Express', 'ACE Cash Express', 'credit_builder_loan', ARRAY['Select States'], true, false, 0.00, NULL, ARRAY['Predatory lender with extremely high interest rates (300%+ APR)'], false);
 
 -- Note: Knowledge embeddings require actual vector embeddings
 -- This is a placeholder structure - you'll need to generate actual embeddings

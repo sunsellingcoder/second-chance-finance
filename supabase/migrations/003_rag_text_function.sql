@@ -34,19 +34,4 @@ BEGIN
   FROM public.knowledge_embeddings
   LIMIT 0;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Alternative: Create a view that allows easier access to knowledge base
-CREATE OR REPLACE VIEW public.knowledge_base_view AS
-SELECT 
-  id,
-  title,
-  category,
-  content,
-  created_at
-FROM public.knowledge_embeddings
-ORDER BY created_at DESC;
-
--- Grant permissions
-GRANT SELECT ON public.knowledge_base_view TO authenticated;
-GRANT SELECT ON public.knowledge_base_view TO anon;
+$$ LANGUAGE plpgsql SECURITY INVOKER;

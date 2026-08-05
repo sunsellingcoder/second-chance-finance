@@ -31,8 +31,14 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith(route)
   );
 
-  // Check for authentication on protected routes
-  if (isProtectedRoute) {
+  // Allow public access to auth pages
+  const isAuthPage = request.nextUrl.pathname.startsWith('/login') || 
+                     request.nextUrl.pathname.startsWith('/signup') ||
+                     request.nextUrl.pathname.startsWith('/auth/callback') ||
+                     request.nextUrl.pathname.startsWith('/auth/auth-code-error');
+
+  // Check for authentication on protected routes (except auth pages)
+  if (isProtectedRoute && !isAuthPage) {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {

@@ -125,7 +125,7 @@ BEGIN
   VALUES (NEW.id, 'user', '8th_grade');
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY INVOKER;
 
 -- Trigger to create profile on user signup
 CREATE TRIGGER on_auth_user_created
@@ -158,4 +158,4 @@ BEGIN
   ORDER BY similarity DESC
   LIMIT match_count;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY INVOKER;

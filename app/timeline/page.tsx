@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import { getUserTimeline, completeMilestone, uncompleteMilestone, resetTimeline } from '@/actions/timeline';
+import { submitIntakeResponse, getUserIntake } from '@/actions/intake';
 
 interface FinancialStatus {
   hasBankAccount: boolean;
@@ -15,6 +17,7 @@ interface FinancialStatus {
 }
 
 interface TimelineStep {
+  id?: string;
   month: number;
   title: string;
   description: string;
@@ -22,113 +25,181 @@ interface TimelineStep {
 }
 
 export default function TimelinePage() {
-  const [step, setStep] = useState<'intake' | 'timeline'>('intake');
+  const [step, setStep] = useState<'intake' | 'timeline' | 'loading'>('loading');
   const [financialStatus, setFinancialStatus] = useState<FinancialStatus>({
     hasBankAccount: false,
     hasStateId: false,
     hasSSN: false,
     existingDebts: false,
     hasRestitution: false,
-    employmentStatus: '',
+    employmentStatus: 'seeking',
     hasCreditScore: false,
   });
   const [timeline, setTimeline] = useState<TimelineStep[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const generateTimeline = () => {
-    const steps: TimelineStep[] = [];
-    let currentMonth = 1;
-
-    // Month 1: Basics
-    if (!financialStatus.hasStateId) {
-      steps.push({
-        month: currentMonth,
-        title: 'Get Your State ID',
-        description: 'Visit your local DMV to obtain a state ID or driver\'s license. This is essential for opening bank accounts and applying for credit.',
-        completed: false,
-      });
-      currentMonth++;
+  // Load existing timeline and intake data on mount
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        
+        // Check for existing timeline
+        const existingTimeline = await getUserTimeline();
+        
+        if (existingTimeline && existingTimeline.timeline_milestones) {
+          // Load existing timeline
+          const timelineSteps: TimelineStep[] = existingTimeline.timeline_milestones
+            .sort((a: any, b: any) => a.step_order - b.step_order)
+            .map((milestone: any) => ({
+              id: milestone.id,
+              month: milestone.target_month,
+              title: milestone.title,
+              description: milestone.description,
+              completed: milestone.is_completed,
+            }));
+          
+          setTimeline(timelineSteps);
+          setStep('timeline');
+        } else {
+          // Check for existing intake data
+          const existingIntake = await getUserIntake();
+          if (existingIntake) {
+            setFinancialStatus({
+              hasBankAccount: existingIntake.has_bank_account,
+              hasStateId: existingIntake.has_state_id,
+              hasSSN: existingIntake.has_ssn_card,
+              existingDebts: existingIntake.raw_responses?.existing_debts || false,
+              hasRestitution: existingIntake.has_restitution_debt,
+              employmentStatus: existingIntake.employment_status,
+              hasCreditScore: false, // Not stored in current schema
+            });
+          }
+          setStep('intake');
+        }
+      } catch (err) {
+        console.error('Error loading timeline data:', err);
+        setError('Failed to load your timeline. Please try again.');
+        setStep('intake');
+      } finally {
+        setLoading(false);
+      }
     }
+    
+    loadData();
+  }, []);
 
-    if (!financialStatus.hasSSN) {
-      steps.push({
-        month: currentMonth,
-        title: 'Obtain Social Security Card',
-        description: 'Apply for a replacement Social Security card if needed. You\'ll need this for most financial applications.',
-        completed: false,
-      });
-      currentMonth++;
+  const generateTimeline = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Create FormData for the server action
+      const formData = new FormData();
+      formData.append('has_bank_account', financialStatus.hasBankAccount.toString());
+      formData.append('has_state_id', financialStatus.hasStateId.toString());
+      formData.append('has_ssn_card', financialStatus.hasSSN.toString());
+      formData.append('has_restitution_debt', financialStatus.hasRestitution.toString());
+      formData.append('employment_status', financialStatus.employmentStatus);
+      formData.append('existing_debts', financialStatus.existingDebts.toString());
+      
+      const result = await submitIntakeResponse(formData);
+      
+      if (result.success) {
+        // Load the newly created timeline
+        const newTimeline = await getUserTimeline();
+        if (newTimeline && newTimeline.timeline_milestones) {
+          const timelineSteps: TimelineStep[] = newTimeline.timeline_milestones
+            .sort((a: any, b: any) => a.step_order - b.step_order)
+            .map((milestone: any) => ({
+              id: milestone.id,
+              month: milestone.target_month,
+              title: milestone.title,
+              description: milestone.description,
+              completed: milestone.is_completed,
+            }));
+          
+          setTimeline(timelineSteps);
+          setStep('timeline');
+        }
+      }
+    } catch (err) {
+      console.error('Error generating timeline:', err);
+      setError('Failed to generate timeline. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    // Month 1-2: Banking
-    if (!financialStatus.hasBankAccount) {
-      steps.push({
-        month: currentMonth,
-        title: 'Open a Second-Chance Bank Account',
-        description: 'Open a checking account with a bank that offers second-chance banking. These accounts are designed for people with limited banking history.',
-        completed: false,
-      });
-      currentMonth++;
-    }
-
-    // Month 2-3: Credit Report
-    steps.push({
-      month: currentMonth,
-      title: 'Get Your Free Credit Report',
-      description: 'Request your free credit report from AnnualCreditReport.com. Review it for errors and understand your starting point.',
-      completed: false,
-    });
-    currentMonth++;
-
-    // Month 3-4: Address Debts
-    if (financialStatus.existingDebts || financialStatus.hasRestitution) {
-      steps.push({
-        month: currentMonth,
-        title: 'Address Existing Debts',
-        description: financialStatus.hasRestitution 
-          ? 'Work with your parole officer or a financial counselor to understand your restitution obligations and create a payment plan.'
-          : 'Contact creditors to discuss payment options for existing debts. Many offer hardship programs.',
-        completed: false,
-      });
-      currentMonth++;
-    }
-
-    // Month 4-6: Secured Card
-    if (!financialStatus.hasCreditScore || financialStatus.hasCreditScore) {
-      steps.push({
-        month: currentMonth,
-        title: 'Apply for a Secured Credit Card',
-        description: 'A secured credit card requires a deposit but helps build credit. Look for cards with no annual fee and that report to all three credit bureaus.',
-        completed: false,
-      });
-      currentMonth += 2;
-    }
-
-    // Month 6-9: Credit Builder Loan
-    steps.push({
-      month: currentMonth,
-      title: 'Consider a Credit Builder Loan',
-      description: 'Many credit unions and CDFIs offer credit builder loans. You make payments into a savings account, and once the loan is paid off, you get the money plus built credit.',
-      completed: false,
-    });
-    currentMonth += 3;
-
-    // Month 9-12: Monitor Progress
-    steps.push({
-      month: currentMonth,
-      title: 'Monitor Your Credit Progress',
-      description: 'Check your credit score regularly. Continue using your secured card responsibly and pay all bills on time.',
-      completed: false,
-    });
-
-    setTimeline(steps);
-    setStep('timeline');
   };
 
-  const toggleStepComplete = (index: number) => {
-    const newTimeline = [...timeline];
-    newTimeline[index].completed = !newTimeline[index].completed;
-    setTimeline(newTimeline);
+  const toggleStepComplete = async (index: number) => {
+    const stepToToggle = timeline[index];
+    if (!stepToToggle.id) return;
+    
+    try {
+      setLoading(true);
+      
+      if (stepToToggle.completed) {
+        await uncompleteMilestone(stepToToggle.id);
+      } else {
+        await completeMilestone(stepToToggle.id);
+      }
+      
+      // Reload timeline to get updated state
+      const updatedTimeline = await getUserTimeline();
+      if (updatedTimeline && updatedTimeline.timeline_milestones) {
+        const timelineSteps: TimelineStep[] = updatedTimeline.timeline_milestones
+          .sort((a: any, b: any) => a.step_order - b.step_order)
+          .map((milestone: any) => ({
+            id: milestone.id,
+            month: milestone.target_month,
+            title: milestone.title,
+            description: milestone.description,
+            completed: milestone.is_completed,
+          }));
+        
+        setTimeline(timelineSteps);
+      }
+    } catch (err) {
+      console.error('Error toggling milestone:', err);
+      setError('Failed to update milestone. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleResetTimeline = async () => {
+    try {
+      setLoading(true);
+      await resetTimeline();
+      setStep('intake');
+      setTimeline([]);
+    } catch (err) {
+      console.error('Error resetting timeline:', err);
+      setError('Failed to reset timeline. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (step === 'loading') {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navigation />
+        <div className="flex-1 bg-gradient-to-br from-blue-50 to-emerald-50 dark:from-zinc-900 dark:to-zinc-800 py-12 px-6">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8">
+            <div className="flex items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+            <p className="text-center text-zinc-600 dark:text-zinc-400 mt-4">Loading your timeline...</p>
+          </div>
+        </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   if (step === 'intake') {
     return (
@@ -143,6 +214,12 @@ export default function TimelinePage() {
             <p className="text-zinc-600 dark:text-zinc-400 mb-8">
               Answer a few questions about your current financial situation, and we'll create a customized plan to help you rebuild.
             </p>
+            
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+              </div>
+            )}
 
             <div className="space-y-6">
               <div>
@@ -290,7 +367,7 @@ export default function TimelinePage() {
                   What is your current employment status?
                 </label>
                 <select
-                  value={financialStatus.employmentStatus}
+                  value={financialStatus.employmentStatus || 'seeking'}
                   onChange={(e) => setFinancialStatus({...financialStatus, employmentStatus: e.target.value})}
                   className="w-full py-3 px-4 rounded-lg border-2 border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 focus:border-blue-600 focus:outline-none"
                 >
@@ -332,9 +409,10 @@ export default function TimelinePage() {
 
               <button
                 onClick={generateTimeline}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-lg font-medium transition-colors"
+                disabled={loading}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-4 rounded-lg font-medium transition-colors"
               >
-                Generate My Timeline
+                {loading ? 'Generating Timeline...' : 'Generate My Timeline'}
               </button>
             </div>
           </div>
@@ -356,17 +434,24 @@ export default function TimelinePage() {
               Your Financial Rebuilding Timeline
             </h1>
             <button
-              onClick={() => setStep('intake')}
-              className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors"
+              onClick={handleResetTimeline}
+              disabled={loading}
+              className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors disabled:opacity-50"
             >
               Start Over
             </button>
           </div>
+          
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+              <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+            </div>
+          )}
 
           <div className="space-y-6">
             {timeline.map((step, index) => (
               <div
-                key={index}
+                key={step.id || index}
                 className={`border-2 rounded-xl p-6 transition-all ${
                   step.completed
                     ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
@@ -376,11 +461,12 @@ export default function TimelinePage() {
                 <div className="flex items-start gap-4">
                   <button
                     onClick={() => toggleStepComplete(index)}
+                    disabled={loading}
                     className={`flex-shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors ${
                       step.completed
                         ? 'border-emerald-500 bg-emerald-500 text-white'
                         : 'border-zinc-300 dark:border-zinc-600 text-zinc-400'
-                    }`}
+                    } disabled:opacity-50`}
                   >
                     {step.completed && (
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

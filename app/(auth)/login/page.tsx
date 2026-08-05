@@ -11,6 +11,17 @@ function LoginForm() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
+  
+  // Check if environment variables are configured
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  console.log('Environment check:', { 
+    hasUrl: !!supabaseUrl, 
+    hasKey: !!supabaseKey,
+    urlPrefix: supabaseUrl?.substring(0, 20) + '...'
+  });
+  
   const supabase = createClient();
 
   // Get return URL from query params
@@ -21,13 +32,28 @@ function LoginForm() {
     setLoading(true);
     setMessage(null);
 
+    // Check if environment variables are configured
+    if (!supabaseUrl || !supabaseKey) {
+      setMessage({
+        type: 'error',
+        text: 'Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment variables.',
+      });
+      setLoading(false);
+      return;
+    }
+
     try {
-      const { error } = await supabase.auth.signInWithOtp({
+      console.log('Attempting login with email:', email);
+      console.log('Redirect URL:', `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent(returnUrl)}`);
+
+      const { data, error } = await supabase.auth.signInWithOtp({
         email,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent(returnUrl)}`,
         },
       });
+
+      console.log('Login response:', { data, error });
 
       if (error) throw error;
 
@@ -36,9 +62,15 @@ function LoginForm() {
         text: 'Check your email for the magic link to log in!',
       });
     } catch (error: any) {
+      console.error('Login error:', error);
+      const errorMessage = error?.message || 
+                          error?.error_description || 
+                          JSON.stringify(error) || 
+                          'An error occurred during login';
+      
       setMessage({
         type: 'error',
-        text: error.message || 'An error occurred during login',
+        text: errorMessage,
       });
     } finally {
       setLoading(false);

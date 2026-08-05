@@ -47,10 +47,80 @@ export default function ChatPage() {
   ]);
   const [input, setInput] = useState('');
 
+  const handleSend = async () => {
+    if (!input.trim()) return;
+
+    const userMessage: Message = {
+      id: messages.length + 1,
+      type: 'user',
+      content: input,
+    };
+
+    setMessages([...messages, userMessage]);
+    setInput('');
+
+    // Add loading message
+    const loadingMessage: Message = {
+      id: messages.length + 2,
+      type: 'assistant',
+      content: 'Thinking...',
+    };
+    setMessages(prev => [...prev, loadingMessage]);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: input }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get response');
+      }
+
+      // Read the streaming response
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let aiResponse = '';
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value);
+          aiResponse += chunk;
+          
+          // Update the loading message with the actual response
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === loadingMessage.id 
+                ? { ...msg, content: aiResponse }
+                : msg
+            )
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      // Fallback to pre-built responses if API fails
+      const fallbackResponse = generateResponse(input);
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === loadingMessage.id 
+            ? { ...msg, content: fallbackResponse }
+            : msg
+        )
+      );
+    }
+  };
+
   const generateResponse = (userMessage: string): string => {
     const lowerMessage = userMessage.toLowerCase();
     
-    // Simple keyword matching for demo purposes
+    // Simple keyword matching for demo purposes (fallback)
     if (lowerMessage.includes('secured card') || lowerMessage.includes('secured credit card')) {
       return preBuiltExplainers[0].content;
     } else if (lowerMessage.includes('restitution') || lowerMessage.includes('court debt')) {
@@ -72,59 +142,49 @@ export default function ChatPage() {
     }
   };
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-
-    const userMessage: Message = {
-      id: messages.length + 1,
-      type: 'user',
-      content: input,
-    };
-
-    const assistantMessage: Message = {
-      id: messages.length + 2,
-      type: 'assistant',
-      content: generateResponse(input),
-    };
-
-    setMessages([...messages, userMessage, assistantMessage]);
-    setInput('');
-  };
-
-  const handleQuickQuestion = (question: string) => {
+  const handleQuickQuestion = async (question: string) => {
     setInput(question);
-    handleSend();
+    await handleSend();
   };
 
   return (
     <div className="min-h-screen flex flex-col">
       <Navigation />
-      <div className="flex-1 bg-gradient-to-br from-blue-50 to-emerald-50 dark:from-zinc-900 dark:to-zinc-800 py-12 px-6">
-      <div className="max-w-3xl mx-auto">
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg overflow-hidden">
-          <div className="bg-blue-600 px-6 py-4">
-            <h1 className="text-2xl font-bold text-white">
-              Financial Q&A Assistant
-            </h1>
-            <p className="text-blue-100 text-sm mt-1">
-              Ask questions about credit, banking, and financial rebuilding
-            </p>
+      <div className="flex-1 bg-gradient-to-br from-blue-50 to-emerald-50 dark:from-zinc-900 dark:to-zinc-800 py-16 px-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-xl overflow-hidden">
+          <div className="bg-blue-600 px-8 py-8">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-white">
+                  Financial Q&A Assistant
+                </h1>
+                <p className="text-blue-100 text-base mt-2">
+                  Ask questions about credit, banking, and financial rebuilding
+                </p>
+              </div>
+            </div>
           </div>
 
-          <div className="p-6">
+          <div className="p-8">
             {!messages.some(m => m.type === 'user') && (
-              <div className="mb-6">
-                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 mb-4">
+              <div className="mb-8">
+                <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50 mb-6">
                   Common Questions
                 </h2>
-                <div className="grid gap-3">
+                <div className="grid gap-4 sm:grid-cols-2">
                   {preBuiltExplainers.map((explainer, index) => (
                     <button
                       key={index}
                       onClick={() => handleQuickQuestion(explainer.title)}
-                      className="text-left p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+                      className="text-left p-6 bg-zinc-50 dark:bg-zinc-800 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all hover:shadow-md"
                     >
-                      <p className="text-zinc-900 dark:text-zinc-50 font-medium">
+                      <p className="text-zinc-900 dark:text-zinc-50 font-medium text-base">
                         {explainer.title}
                       </p>
                     </button>
@@ -133,44 +193,47 @@ export default function ChatPage() {
               </div>
             )}
 
-            <div className="space-y-4 mb-6 max-h-96 overflow-y-auto">
+            <div className="space-y-6 mb-8 max-h-[500px] overflow-y-auto pr-2">
               {messages.map((message) => (
                 <div
                   key={message.id}
                   className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[80%] p-4 rounded-2xl ${
+                    className={`max-w-[85%] p-6 rounded-2xl ${
                       message.type === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-50'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-50 shadow-sm'
                     }`}
                   >
-                    <p className="text-sm leading-relaxed">{message.content}</p>
+                    <p className="text-base leading-relaxed whitespace-pre-wrap">{message.content}</p>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-4">
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                 placeholder="Type your question here..."
-                className="flex-1 px-4 py-3 rounded-lg border-2 border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-50 focus:border-blue-600 focus:outline-none"
+                className="flex-1 px-6 py-4 rounded-xl border-2 border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-50 focus:border-blue-600 focus:outline-none text-base"
               />
               <button
                 onClick={handleSend}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors text-base flex items-center gap-2"
               >
-                Send
+                <span>Send</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
               </button>
             </div>
 
-            <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-              <p className="text-xs text-amber-800 dark:text-amber-200">
+            <div className="mt-6 p-6 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
+              <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
                 <strong>Disclaimer:</strong> This assistant provides educational information only, not financial or legal advice. For specific guidance, please consult a qualified professional.
               </p>
             </div>

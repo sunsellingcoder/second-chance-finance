@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Supabase Connection Test</title>
+</head>
+<body>
+    <h1>Supabase Connection Test</h1>
+    <div id="result"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const SUPABASE_URL = 'https://fqxackkeigimakpkleds.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxeGFja2tlaWdpbWFrcGtsZWRzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5NzYzNzksImV4cCI6MjEwMDU1MjM3OX0.fDLJaQSF8qnwTI7R_wxVEzvnqGFH6vQm35HDSvkEVkc';
+        
+        const resultDiv = document.getElementById('result');
+        
+        async function testConnection() {
+            resultDiv.innerHTML = '<p>Testing connection...</p>';
+            
+            try {
+                // Test 1: Basic connection
+                const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                resultDiv.innerHTML += '<p>✓ Client created</p>';
+                
+                // Test 2: Health check
+                const { data, error } = await supabase.auth.getSession();
+                resultDiv.innerHTML += `<p>Session check: ${error ? '✗ Error: ' + error.message : '✓ Success'}</p>`;
+                
+                // Test 3: Try to send magic link
+                const testEmail = 'test@example.com';
+                const { data: otpData, error: otpError } = await supabase.auth.signInWithOtp({
+                    email: testEmail,
+                    options: {
+                        emailRedirectTo: window.location.origin + '/auth/callback'
+                    }
+                });
+                
+                if (otpError) {
+                    resultDiv.innerHTML += `<p>✗ Magic link failed: ${otpError.message}</p>`;
+                    resultDiv.innerHTML += `<p>Error details: ${JSON.stringify(otpError)}</p>`;
+                } else {
+                    resultDiv.innerHTML += '<p>✓ Magic link request successful</p>';
+                }
+                
+            } catch (err) {
+                resultDiv.innerHTML += `<p>✗ Test failed: ${err.message}</p>`;
+                resultDiv.innerHTML += `<p>Error details: ${JSON.stringify(err)}</p>`;
+            }
+        }
+        
+        testConnection();
+    </script>
+</body>
+</html>

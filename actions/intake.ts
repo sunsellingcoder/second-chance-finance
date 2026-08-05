@@ -33,7 +33,7 @@ export async function submitIntakeResponse(formData: FormData) {
     has_state_id: formData.get('has_state_id') === 'true',
     has_ssn_card: formData.get('has_ssn_card') === 'true',
     has_restitution_debt: formData.get('has_restitution_debt') === 'true',
-    employment_status: formData.get('employment_status') as string,
+    employment_status: formData.get('employment_status') as string || 'seeking',
     existing_debts: formData.get('existing_debts') === 'true',
   };
 
